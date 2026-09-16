@@ -48,9 +48,8 @@ const CAS_MAX_RETRIES: u32 = 3;
 const DEFAULT_TIMEOUT_MS: i64 = 5_000;
 const CDGC_REFRESH_BUDGET_MS: i64 = 10_000;
 const DEFAULT_REFRESH_INTERVAL_SECONDS: i64 = 86_400;
-const DEFAULT_FIELD_MAP: &str =
-    r#"{"x-dp-name":"core.name","x-dp-classification":"core.classification","x-dp-dq-score":"dataQuality/0/core.score"}"#;
-const DEFAULT_SEGMENTS: &str = "core,dataQuality";
+const DEFAULT_FIELD_MAP: &str = r#"{"x-dp-name":"summary/core.name","x-dp-description":"summary/core.description","x-dp-external-id":"core.externalId","x-dp-dq-score":"dataQuality/0/core.score"}"#;
+const DEFAULT_SEGMENTS: &str = "core,summary,dataQuality";
 
 #[derive(Deserialize)]
 struct CdgcLoginResponse {
@@ -156,11 +155,13 @@ async fn fetch_cdgc_metadata(
         .map_err(|e| anyhow!("Failed to parse CDGC JWT response: {e}"))?;
 
     // 3. Asset detail
+    // segments is a controlled, comma-separated config value — passed raw so the
+    // comma keeps its list semantics (percent-encoding it to %2C breaks the API).
     let segments = config.segments.as_deref().unwrap_or(DEFAULT_SEGMENTS);
     let detail_path = format!(
         "/data360/search/v1/assets/{}?scheme=internal&segments={}",
         percent_encode(asset_id),
-        percent_encode(segments)
+        segments
     );
     let authorization = format!("Bearer {}", jwt.jwt_token);
     let t = next_call_timeout(per_call, elapsed_ms(start, clock.now()))

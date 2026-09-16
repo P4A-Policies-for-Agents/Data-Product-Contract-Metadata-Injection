@@ -55,14 +55,15 @@ spec:
         one policy instance can enrich many products (each request naming its asset).
     segments:
       type: string
-      default: core,dataQuality
+      default: core,summary,dataQuality
       description: >-
         Comma-separated CDGC asset-detail segments to request (passed as
-        ?segments=...). e.g. core,dataQuality,stakeholders,customAttributes.
+        ?segments=...). Name/description live under 'summary'; e.g.
+        core,summary,dataQuality,stakeholders.
     fieldMap:
       type: string
       default: >-
-        {"x-dp-name":"core.name","x-dp-classification":"core.classification","x-dp-dq-score":"dataQuality/0/core.score"}
+        {"x-dp-name":"summary/core.name","x-dp-description":"summary/core.description","x-dp-external-id":"core.externalId","x-dp-dq-score":"dataQuality/0/core.score"}
       description: >-
         JSON object (as a string) mapping the RESPONSE header name to a path into
         the CDGC asset-detail JSON. Path segments are separated by "/"; a segment

@@ -3,13 +3,8 @@
   "transport": { "kind": "streamableHttp", "path": "/mcp" },
   "capabilities": { "tools": { "listChanged": true } },
   "tools": [
-    {
-      "name": "get_orders",
-      "description": "Return recent sales order records from the Sales Orders data product. Gateway responses are enriched with CDGC contract-metadata headers by the Data Product Contract Metadata Injection policy.",
-      "inputSchema": { "type": "object", "properties": {
-        "limit": { "type": "integer", "description": "Max rows to return." } } },
-      "outputSchema": { "type": "object", "properties": {
-        "orders": { "type": "array" }, "count": { "type": "integer" } } }
-    }
+    { "name": "get_products",
+      "description": "Return product-catalog records (fields mirror the CDGC-governed dim_product.csv). Responses are enriched with x-dp-* governed-identity headers by the Contract Metadata Injection policy.",
+      "inputSchema": { "type": "object", "properties": { "variant": { "type": "string" } } } }
   ]
 }

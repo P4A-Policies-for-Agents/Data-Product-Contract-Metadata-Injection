@@ -1,15 +1,8 @@
 use serde::Deserialize;
 #[derive(Deserialize, Clone, Debug)]
 pub struct Config {
-    #[serde(alias = "assetIdHeader")]
-    pub asset_id_header: Option<String>,
-    #[serde(alias = "cdgcAssetId")]
-    pub cdgc_asset_id: String,
-    #[serde(
-        alias = "cdgcBaseApiUrl",
-        deserialize_with = "pdk::serde::deserialize_service"
-    )]
-    pub cdgc_base_api_url: pdk::hl::Service,
+    #[serde(alias = "catalogId")]
+    pub catalog_id: String,
     #[serde(
         alias = "cdgcLoginUrl",
         deserialize_with = "pdk::serde::deserialize_service"
@@ -19,18 +12,25 @@ pub struct Config {
     pub cdgc_org_password: String,
     #[serde(alias = "cdgcOrgUsername")]
     pub cdgc_org_username: String,
+    #[serde(
+        alias = "cdgcSearchUrl",
+        deserialize_with = "pdk::serde::deserialize_service"
+    )]
+    pub cdgc_search_url: pdk::hl::Service,
     #[serde(alias = "distributed")]
     pub distributed: Option<bool>,
     #[serde(alias = "failOpenOnCdgcError")]
     pub fail_open_on_cdgc_error: Option<bool>,
-    #[serde(alias = "fieldMap")]
-    pub field_map: Option<String>,
+    #[serde(alias = "flatFileId")]
+    pub flat_file_id: String,
+    #[serde(alias = "flatFileIdHeader")]
+    pub flat_file_id_header: Option<String>,
     #[serde(alias = "headerOnMiss")]
     pub header_on_miss: Option<bool>,
     #[serde(alias = "refreshIntervalSeconds")]
     pub refresh_interval_seconds: Option<i64>,
-    #[serde(alias = "segments")]
-    pub segments: Option<String>,
+    #[serde(alias = "sensitiveMarker")]
+    pub sensitive_marker: Option<String>,
     #[serde(alias = "timeout")]
     pub timeout: Option<i64>,
 }
@@ -43,8 +43,8 @@ fn init(abi: &dyn pdk::flex_abi::api::FlexAbi) -> Result<(), anyhow::Error> {
                 String::from_utf8_lossy(abi.get_configuration()), err
             )
         })?;
-    abi.service_create(config.cdgc_base_api_url)?;
     abi.service_create(config.cdgc_login_url)?;
+    abi.service_create(config.cdgc_search_url)?;
     abi.setup()?;
     Ok(())
 }

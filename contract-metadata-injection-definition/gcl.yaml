@@ -6,10 +6,9 @@ metadata:
     title: Data Product Contract Metadata Injection
     category: Transformation
     description: >-
-      Fetches a CDGC-governed data product asset's metadata from Informatica
-      IDMC and stamps it onto responses as headers (name, version, owner,
-      classification, SLA, purposes). Cached + lazily refreshed; enrichment,
-      fail-open.
+      Derives a data product's governed identity from Informatica CDGC (a scanned
+      flat file + its columns and Business Terms) and stamps it onto responses as
+      x-dp-* headers. Enrichment, headers-only, fail-open.
     metadata/capabilities/injectionPoint: inbound
     metadata/capabilities/assetTypes: mcp,a2a,a2a_v1
     metadata/interfaceScope: api,resource
@@ -21,92 +20,60 @@ spec:
     cdgcLoginUrl:
       type: string
       format: service
-      description: >-
-        IDMC login base URL for this org, e.g. https://dmp-us.informaticacloud.com.
-        Region/POD prefix (dm- vs dmp-) is org-specific — verify per org.
-    cdgcBaseApiUrl:
+      description: IDMC login base URL, e.g. https://dm-us.informaticacloud.com.
+    cdgcSearchUrl:
       type: string
       format: service
-      description: >-
-        CDGC base API URL for this org, e.g. https://idmc-api.dmp-us.informaticacloud.com.
-        Not reliably returned by Login — configure explicitly.
+      description: CDGC search host (ccgf-searchv2), e.g. https://cdgc-api.dm-us.informaticacloud.com.
     cdgcOrgUsername:
       type: string
-      description: IDMC service-account username used to authenticate to CDGC (read-only).
-      "@context":
-        "@characteristics":
-          - security:sensitive
+      description: IDMC read-only service-account username.
+      "@context": { "@characteristics": [security:sensitive] }
     cdgcOrgPassword:
       type: string
       description: IDMC service-account password.
-      "@context":
-        "@characteristics":
-          - security:sensitive
-    cdgcAssetId:
+      "@context": { "@characteristics": [security:sensitive] }
+    catalogId:
+      type: string
+      description: CDGC catalog-source id the flat file belongs to.
+    flatFileId:
       type: string
       description: >-
-        Internal ID of the CDGC asset whose metadata is stamped (same ID shown in
-        the CDGC UI asset URL). Used when assetIdHeader is absent on the request.
-    assetIdHeader:
+        Scanned flat-file/table asset id. The policy derives its identity + column
+        summary (names, required, sensitive) from CDGC — no per-field config.
+    flatFileIdHeader:
       type: string
-      default: x-dp-contract-id
-      description: >-
-        Optional request header whose value overrides cdgcAssetId per request, so
-        one policy instance can enrich many products (each request naming its asset).
-    segments:
+      default: x-dp-flatfile-id
+      description: Optional request header overriding flatFileId per request.
+    sensitiveMarker:
       type: string
-      default: core,summary,dataQuality
-      description: >-
-        Comma-separated CDGC asset-detail segments to request (passed as
-        ?segments=...). Name/description live under 'summary'; e.g.
-        core,summary,dataQuality,stakeholders.
-    fieldMap:
-      type: string
-      default: >-
-        {"x-dp-name":"summary/core.name","x-dp-description":"summary/core.description","x-dp-external-id":"core.externalId","x-dp-dq-score":"dataQuality/0/core.score"}
-      description: >-
-        JSON object (as a string) mapping the RESPONSE header name to a path into
-        the CDGC asset-detail JSON. Path segments are separated by "/"; a segment
-        may itself be a dotted literal key (CDGC uses keys like "core.score") and a
-        numeric segment indexes an array, e.g. "dataQuality/0/core.score". Tune the
-        paths to your tenant's asset-detail shape.
+      default: confidential
+      description: Case-insensitive substring in a field's Business Term description marking it sensitive.
     headerOnMiss:
       type: boolean
       default: true
-      description: >-
-        When metadata is unavailable (cold cache + CDGC error), still stamp
-        x-dp-metadata-status=unavailable so consumers can observe the gap. Never
-        blocks — this is enrichment (fail-open).
+      description: Stamp x-dp-metadata-status=unavailable when CDGC metadata can't be resolved (fail-open).
     refreshIntervalSeconds:
       type: integer
       default: 86400
       minimum: 30
-      description: >-
-        Cache TTL for the fetched metadata. A request re-authenticates to CDGC and
-        refreshes only when the cached entry is older than this (CDGC metadata
-        changes slowly; 24h is a sensible default).
+      description: Cache TTL for the derived metadata before a lazy CDGC refresh.
     failOpenOnCdgcError:
       type: boolean
       default: true
-      description: >-
-        On a transient CDGC error with a last-known-good cached entry, keep serving
-        it (true) rather than dropping to unavailable. Enrichment posture — always
-        fail-open on the response itself (never blocks).
+      description: Serve last-known-good on transient CDGC error; never block (enrichment).
     distributed:
       type: boolean
       default: false
-      description: >-
-        Share the cached metadata and refresh lock across gateway replicas via
-        gossip-replicated storage (requires shared storage configured on the gateway).
+      description: Share cache + refresh lock across replicas (needs shared storage).
     timeout:
       type: integer
       default: 5000
-      description: >-
-        Per-call timeout (ms) for each CDGC HTTP request (Login, JWT, Detail),
-        additionally clamped to an overall ~10s chained refresh budget.
+      description: Per-CDGC-call timeout (ms), clamped to a chained budget (~15s).
   required:
     - cdgcLoginUrl
-    - cdgcBaseApiUrl
+    - cdgcSearchUrl
     - cdgcOrgUsername
     - cdgcOrgPassword
-    - cdgcAssetId
+    - catalogId
+    - flatFileId

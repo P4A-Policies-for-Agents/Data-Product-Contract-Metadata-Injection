@@ -1,0 +1,15 @@
+{
+  "protocolVersion": "2025-03-26",
+  "transport": { "kind": "streamableHttp", "path": "/mcp" },
+  "capabilities": { "tools": { "listChanged": true } },
+  "tools": [
+    {
+      "name": "get_orders",
+      "description": "Return recent sales order records from the Sales Orders data product. Gateway responses are enriched with CDGC contract-metadata headers by the Data Product Contract Metadata Injection policy.",
+      "inputSchema": { "type": "object", "properties": {
+        "limit": { "type": "integer", "description": "Max rows to return." } } },
+      "outputSchema": { "type": "object", "properties": {
+        "orders": { "type": "array" }, "count": { "type": "integer" } } }
+    }
+  ]
+}

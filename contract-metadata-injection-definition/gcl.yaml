@@ -1,0 +1,111 @@
+---
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: Extension
+metadata:
+  labels:
+    title: Data Product Contract Metadata Injection
+    category: Transformation
+    description: >-
+      Fetches a CDGC-governed data product asset's metadata from Informatica
+      IDMC and stamps it onto responses as headers (name, version, owner,
+      classification, SLA, purposes). Cached + lazily refreshed; enrichment,
+      fail-open.
+    metadata/capabilities/injectionPoint: inbound
+    metadata/capabilities/assetTypes: mcp,a2a,a2a_v1
+    metadata/interfaceScope: api,resource
+spec:
+  extends:
+    - name: extension-definition
+      namespace: default
+  properties:
+    cdgcLoginUrl:
+      type: string
+      format: service
+      description: >-
+        IDMC login base URL for this org, e.g. https://dmp-us.informaticacloud.com.
+        Region/POD prefix (dm- vs dmp-) is org-specific — verify per org.
+    cdgcBaseApiUrl:
+      type: string
+      format: service
+      description: >-
+        CDGC base API URL for this org, e.g. https://idmc-api.dmp-us.informaticacloud.com.
+        Not reliably returned by Login — configure explicitly.
+    cdgcOrgUsername:
+      type: string
+      description: IDMC service-account username used to authenticate to CDGC (read-only).
+      "@context":
+        "@characteristics":
+          - security:sensitive
+    cdgcOrgPassword:
+      type: string
+      description: IDMC service-account password.
+      "@context":
+        "@characteristics":
+          - security:sensitive
+    cdgcAssetId:
+      type: string
+      description: >-
+        Internal ID of the CDGC asset whose metadata is stamped (same ID shown in
+        the CDGC UI asset URL). Used when assetIdHeader is absent on the request.
+    assetIdHeader:
+      type: string
+      default: x-dp-contract-id
+      description: >-
+        Optional request header whose value overrides cdgcAssetId per request, so
+        one policy instance can enrich many products (each request naming its asset).
+    segments:
+      type: string
+      default: core,dataQuality
+      description: >-
+        Comma-separated CDGC asset-detail segments to request (passed as
+        ?segments=...). e.g. core,dataQuality,stakeholders,customAttributes.
+    fieldMap:
+      type: string
+      default: >-
+        {"x-dp-name":"core.name","x-dp-classification":"core.classification","x-dp-dq-score":"dataQuality/0/core.score"}
+      description: >-
+        JSON object (as a string) mapping the RESPONSE header name to a path into
+        the CDGC asset-detail JSON. Path segments are separated by "/"; a segment
+        may itself be a dotted literal key (CDGC uses keys like "core.score") and a
+        numeric segment indexes an array, e.g. "dataQuality/0/core.score". Tune the
+        paths to your tenant's asset-detail shape.
+    headerOnMiss:
+      type: boolean
+      default: true
+      description: >-
+        When metadata is unavailable (cold cache + CDGC error), still stamp
+        x-dp-metadata-status=unavailable so consumers can observe the gap. Never
+        blocks — this is enrichment (fail-open).
+    refreshIntervalSeconds:
+      type: integer
+      default: 86400
+      minimum: 30
+      description: >-
+        Cache TTL for the fetched metadata. A request re-authenticates to CDGC and
+        refreshes only when the cached entry is older than this (CDGC metadata
+        changes slowly; 24h is a sensible default).
+    failOpenOnCdgcError:
+      type: boolean
+      default: true
+      description: >-
+        On a transient CDGC error with a last-known-good cached entry, keep serving
+        it (true) rather than dropping to unavailable. Enrichment posture — always
+        fail-open on the response itself (never blocks).
+    distributed:
+      type: boolean
+      default: false
+      description: >-
+        Share the cached metadata and refresh lock across gateway replicas via
+        gossip-replicated storage (requires shared storage configured on the gateway).
+    timeout:
+      type: integer
+      default: 5000
+      description: >-
+        Per-call timeout (ms) for each CDGC HTTP request (Login, JWT, Detail),
+        additionally clamped to an overall ~10s chained refresh budget.
+  required:
+    - cdgcLoginUrl
+    - cdgcBaseApiUrl
+    - cdgcOrgUsername
+    - cdgcOrgPassword
+    - cdgcAssetId

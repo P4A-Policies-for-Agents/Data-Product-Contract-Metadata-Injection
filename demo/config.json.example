@@ -1,0 +1,13 @@
+{
+  "cdgcLoginUrl": "https://dmp-us.informaticacloud.com",
+  "cdgcBaseApiUrl": "https://idmc-api.dmp-us.informaticacloud.com",
+  "cdgcOrgUsername": "REPLACE_ME_SERVICE_ACCOUNT",
+  "cdgcOrgPassword": "REPLACE_ME_SECRET",
+  "cdgcAssetId": "REPLACE_ME_CDGC_ASSET_ID",
+  "segments": "core,dataQuality",
+  "fieldMap": "{\"x-dp-name\":\"core.name\",\"x-dp-classification\":\"core.classification\",\"x-dp-dq-score\":\"dataQuality/0/core.score\"}",
+  "refreshIntervalSeconds": 86400,
+  "failOpenOnCdgcError": true,
+  "distributed": false,
+  "timeout": 5000
+}

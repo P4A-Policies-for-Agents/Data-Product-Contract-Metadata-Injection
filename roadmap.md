@@ -41,3 +41,20 @@ otherwise.
 
 Optionally log a structured record of each enrichment (asset, fields stamped,
 cache hit/miss, source) for the observability suite.
+
+## Known limitation — cold cache on streaming responses
+
+This policy stamps response **headers** after resolving CDGC metadata. On a cold
+cache it fetches CDGC on the **response leg**, which can race the streamed
+(SSE) response-head commit and return **500** on a freshly-deployed instance
+(a warm instance serves from cache and is fine). Attempts to move the fetch to
+the request leg (Exchange versions 1.0.2–1.0.4, incl. `enable_stop_iteration`)
+did not resolve it on the tested Omni runtime and are **superseded** — this repo
+tracks the **1.0.1** code, which works on warm / non-streaming paths.
+
+**Robust alternative:** the **Data Product Contract Conformance Guard** buffers the
+response body while it fetches CDGC (so its fetch is race-free) and, from that same
+fetch, emits the contract **identity** (name/externalId) *and* enforces the field
+contract — delivering the self-describe + enforce story in one policy on a fresh
+instance. Prefer it when you need identity on a cold/streaming path; use this
+header-only policy for enrichment on warm/non-streaming paths.

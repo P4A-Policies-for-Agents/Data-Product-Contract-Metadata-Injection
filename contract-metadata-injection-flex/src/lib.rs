@@ -16,6 +16,7 @@
 //! single-flight, distributed opt-in). Enrichment, fail-open: never blocks.
 
 mod cdgc;
+mod claims;
 mod generated;
 
 use std::collections::BTreeMap;
@@ -347,8 +348,17 @@ async fn request_filter<S: DataStorage>(
     lock_store: Rc<S>,
 ) -> Flow<Option<Ctx>> {
     let hs = request_state.into_headers_state().await;
+    // Optionally bind the schema id to a validated JWT claim (decoded here, verified
+    // by an upstream JWT Validation policy). A configured claim wins over the header;
+    // absent config or absent claim falls back to the header (backward compatible).
+    let claim_schema = config.schema_id_claim.as_deref().and_then(|name| {
+        let auth = hs.handler().header("authorization");
+        claims::decode_bearer_claims(auth.as_deref())
+            .and_then(|c| claims::claim_str(&c, name))
+    });
     let header_name = config.schema_id_header.as_deref().unwrap_or("x-dp-schema-id");
-    let schema_id = hs.handler().header(header_name).filter(|v| !v.trim().is_empty())
+    let schema_id = claim_schema
+        .or_else(|| hs.handler().header(header_name).filter(|v| !v.trim().is_empty()))
         .unwrap_or_else(|| config.schema_id.clone());
 
     let ct = hs.handler().header("content-type").unwrap_or_default();

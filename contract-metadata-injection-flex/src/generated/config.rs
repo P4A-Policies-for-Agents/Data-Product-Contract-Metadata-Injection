@@ -25,6 +25,8 @@ pub struct Config {
     pub refresh_interval_seconds: Option<i64>,
     #[serde(alias = "schemaId")]
     pub schema_id: String,
+    #[serde(alias = "schemaIdClaim")]
+    pub schema_id_claim: Option<String>,
     #[serde(alias = "schemaIdHeader")]
     pub schema_id_header: Option<String>,
     #[serde(alias = "sensitiveLevels")]

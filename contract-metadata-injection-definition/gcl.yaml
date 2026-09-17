@@ -43,6 +43,14 @@ spec:
       type: string
       default: x-dp-schema-id
       description: Optional request header overriding schemaId per request.
+    schemaIdClaim:
+      type: string
+      description: >-
+        Optional JWT claim name to read schemaId from. When set and present in the
+        caller's (upstream-validated) Bearer token, the claim wins over schemaIdHeader
+        — so the token binds the caller to a data product and a spoofed header can't
+        redirect it. Unset (default) = header/config only. Requires a JWT Validation
+        policy upstream to verify the token.
     sensitiveLevels:
       type: string
       default: confidential,restricted

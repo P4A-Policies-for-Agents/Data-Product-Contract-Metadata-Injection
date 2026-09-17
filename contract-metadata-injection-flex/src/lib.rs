@@ -5,8 +5,10 @@
 //! Given only a CDGC schema-asset id (a scanned flat file, table, etc.), it derives
 //! the data product's governed identity from Informatica CDGC (via the ccgf-searchv2
 //! search API): the asset's name/external-id, its columns, and the required/sensitive
-//! flags from the columns' linked Business Terms. It stamps that summary onto the
-//! response as x-dp-* headers so the output port is self-describing.
+//! flags from the columns' linked Business Terms. Sensitivity comes from the term's
+//! structured Security Level (securityClassification) ∈ sensitiveLevels, falling back
+//! to the description sensitiveMarker only when no level is set. It stamps that summary
+//! onto the response as x-dp-* headers so the output port is self-describing.
 //!
 //! The CDGC fetch runs on the REQUEST leg (await-safe under enable_stop_iteration)
 //! and is stamped synchronously on the response leg — avoiding the response-leg
@@ -46,7 +48,9 @@ const SEARCH_PATH: &str = "/ccgf-searchv2/api/v1/search";
 const CT_FLATFIELD: &str = "com.infa.odin.models.file.flat.FlatField";
 const REL_TECH_GLOSSARY: &str = "com.infa.ccgf.models.governance.IClassTechnicalGlossaryBase";
 const ATTR_ISCDE: &str = "com.infa.ccgf.models.governance.isCDE";
+const ATTR_SECURITY_CLASS: &str = "com.infa.ccgf.models.governance.securityClassification";
 const DEFAULT_SENSITIVE_MARKER: &str = "confidential";
+const DEFAULT_SENSITIVE_LEVELS: &str = "confidential,restricted";
 
 #[derive(Deserialize)]
 struct CdgcLoginResponse {
@@ -153,6 +157,8 @@ async fn fetch_summary(client: &HttpClient, config: &Config, clock: &Clock, sche
     let start = clock.now();
     let (jwt, org) = cdgc_auth(client, config, clock, start).await?;
     let sens_marker = config.sensitive_marker.as_deref().unwrap_or(DEFAULT_SENSITIVE_MARKER).to_lowercase();
+    let sens_levels: Vec<String> = config.sensitive_levels.as_deref().unwrap_or(DEFAULT_SENSITIVE_LEVELS)
+        .split(',').map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).collect();
 
     let files = cdgc_search(client, config, clock, start, &jwt, &org, &json!({
         "from":0,"size":1,"query":{"bool":{"must":[
@@ -207,8 +213,16 @@ async fn fetch_summary(client: &HttpClient, config: &Config, clock: &Clock, sche
                 if t.get(ATTR_ISCDE).and_then(Value::as_bool).unwrap_or(false) {
                     required.extend(cols_for.clone());
                 }
-                let desc = s(t, "core.description").unwrap_or_default().to_lowercase();
-                if desc.contains(&sens_marker) {
+                // Primary: the term's structured Security Level classification.
+                // Fallback (only when no level is set): the description substring marker.
+                let level = s(t, ATTR_SECURITY_CLASS).unwrap_or_default().trim().to_lowercase();
+                let is_sensitive = if level.is_empty() {
+                    let desc = s(t, "core.description").unwrap_or_default().to_lowercase();
+                    desc.contains(&sens_marker)
+                } else {
+                    sens_levels.contains(&level)
+                };
+                if is_sensitive {
                     sensitive.extend(cols_for);
                 }
             }

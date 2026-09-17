@@ -27,7 +27,7 @@ it authenticates to IDMC (Login → JWT) and then, via the CDGC search API
 
 1. **Resolve the schema asset** (`core.identity = schemaId`) → name, external id, location.
 2. **Enumerate its columns** (`FlatField` under the asset location) → field names + count.
-3. **Column → Business Term links** + **resolve terms** → `required` (term `isCDE`) and `sensitive` (term description contains `sensitiveMarker`, e.g. *"Confidential…"*).
+3. **Column → Business Term links** + **resolve terms** → `required` (term `isCDE`) and `sensitive` (the term's structured **Security Level** `securityClassification` ∈ `sensitiveLevels`, e.g. `confidential,restricted`; falls back to the `sensitiveMarker` description substring only when a term has no Security Level set).
 
 It caches the result (lazy refresh, single-flight, `distributed` opt-in) and stamps
 the summary **synchronously on the response leg** — so the slow fetch never races
@@ -53,7 +53,8 @@ x-dp-metadata-source: cdgc          x-dp-metadata-status: ok
 | `cdgcOrgUsername` / `cdgcOrgPassword` | string (sensitive) | required | IDMC read-only service account. |
 | `schemaId` | string | required | CDGC asset id of the scanned schema (flat file, table, etc.) whose columns are summarized. |
 | `schemaIdHeader` | string | `x-dp-schema-id` | Per-request schema-asset id override. |
-| `sensitiveMarker` | string | `confidential` | Case-insensitive substring in a field's term description that marks it sensitive. |
+| `sensitiveLevels` | string | `confidential,restricted` | Comma-separated Business Term "Security Level" (`securityClassification`) values that mark a field sensitive. Primary sensitivity signal. |
+| `sensitiveMarker` | string | `confidential` | Fallback only (term has no Security Level): case-insensitive substring in the term description that marks it sensitive. |
 | `headerOnMiss` | boolean | `true` | Stamp `x-dp-metadata-status: unavailable` when CDGC can't be resolved. |
 | `refreshIntervalSeconds` | integer | `86400` | Metadata cache TTL. |
 | `failOpenOnCdgcError` | boolean | `true` | Serve last-known-good on transient CDGC error. |
@@ -70,9 +71,11 @@ cd ../contract-metadata-injection-flex
 make build-asset-files && cargo build --target wasm32-wasip1 --release
 make release
 ```
-Published at **1.0.6** (catalog-driven; drops `catalogId` and renames
-`flatFileId`→`schemaId`, with `x-dp-source` now derived from the asset's
-`core.origin`). Requires **PDK 1.10** with `enable_stop_iteration` (request-leg CDGC fetch).
+Published at **1.0.8** (catalog-driven; `x-dp-source` from the asset's
+`core.origin`; **sensitivity from the Business Term Security Level
+`securityClassification`, with the description `sensitiveMarker` as fallback** —
+matching the Conformance Guard and Entitlement Filter). Requires **PDK 1.10** with
+`enable_stop_iteration` (request-leg CDGC fetch).
 
 > **Note on earlier versions:** 1.0.1 used a data360 detail-read + a configured
 > field map and fetched on the *response* leg, which raced the streamed

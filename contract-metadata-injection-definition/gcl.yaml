@@ -43,10 +43,21 @@ spec:
       type: string
       default: x-dp-schema-id
       description: Optional request header overriding schemaId per request.
+    sensitiveLevels:
+      type: string
+      default: confidential,restricted
+      description: >-
+        Comma-separated IDMC Business Term "Security Level" (securityClassification)
+        values that mark a field sensitive — e.g. confidential,restricted. Matched
+        case-insensitively against each column's linked term's structured
+        classification. This is the primary sensitivity signal.
     sensitiveMarker:
       type: string
       default: confidential
-      description: Case-insensitive substring in a field's Business Term description marking it sensitive.
+      description: >-
+        Fallback only, used when a term has no Security Level set: case-insensitive
+        substring in the term's description that marks the field sensitive (e.g. a
+        term whose definition says "Confidential: ...").
     headerOnMiss:
       type: boolean
       default: true

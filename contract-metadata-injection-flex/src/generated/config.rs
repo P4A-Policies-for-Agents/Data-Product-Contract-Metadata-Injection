@@ -27,6 +27,8 @@ pub struct Config {
     pub schema_id: String,
     #[serde(alias = "schemaIdHeader")]
     pub schema_id_header: Option<String>,
+    #[serde(alias = "sensitiveLevels")]
+    pub sensitive_levels: Option<String>,
     #[serde(alias = "sensitiveMarker")]
     pub sensitive_marker: Option<String>,
     #[serde(alias = "timeout")]

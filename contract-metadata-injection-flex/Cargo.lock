@@ -694,7 +694,7 @@ checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 
 [[package]]
 name = "contract_metadata_injection"
-version = "1.0.7"
+version = "1.0.8"
 dependencies = [
  "anyhow",
  "httpmock",

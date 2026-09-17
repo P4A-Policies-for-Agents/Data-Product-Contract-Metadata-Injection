@@ -1,7 +1,7 @@
 # Copyright 2026 Salesforce, Inc. All rights reserved.
 [package]
 name = "contract_metadata_injection"
-version = "1.0.7"
+version = "1.0.8"
 rust-version = "1.88.0"
 edition = "2018"
 resolver = "2"
@@ -10,7 +10,7 @@ resolver = "2"
 
 [package.metadata.anypoint]
 group_id = "030e0aac-30d9-460f-9234-428c16a123c4"
-definition_asset_id = { name = "contract-metadata-injection", version = "1.0.7" }
+definition_asset_id = { name = "contract-metadata-injection", version = "1.0.8" }
 implementation_asset_id = "contract-metadata-injection-flex"
 
 [dependencies]

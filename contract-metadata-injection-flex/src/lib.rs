@@ -2,9 +2,9 @@
 //! Data Product Contract Metadata Injection — inbound, headers-only, fail-open
 //! Omni/Flex Gateway policy. Works on MCP, A2A and REST/HTTP.
 //!
-//! Given only a CDGC catalog-source id + scanned flat-file id, it derives the data
-//! product's governed identity from Informatica CDGC (via the ccgf-searchv2 search
-//! API): the flat file's name/external-id, its columns, and the required/sensitive
+//! Given only a CDGC schema-asset id (a scanned flat file, table, etc.), it derives
+//! the data product's governed identity from Informatica CDGC (via the ccgf-searchv2
+//! search API): the asset's name/external-id, its columns, and the required/sensitive
 //! flags from the columns' linked Business Terms. It stamps that summary onto the
 //! response as x-dp-* headers so the output port is self-describing.
 //!
@@ -148,18 +148,18 @@ async fn cdgc_search(
         .unwrap_or_default())
 }
 
-/// Derive the governed metadata summary (header name → value) for a flat file.
-async fn fetch_summary(client: &HttpClient, config: &Config, clock: &Clock, flat_file_id: &str) -> Result<BTreeMap<String, String>> {
+/// Derive the governed metadata summary (header name → value) for a schema asset.
+async fn fetch_summary(client: &HttpClient, config: &Config, clock: &Clock, schema_id: &str) -> Result<BTreeMap<String, String>> {
     let start = clock.now();
     let (jwt, org) = cdgc_auth(client, config, clock, start).await?;
     let sens_marker = config.sensitive_marker.as_deref().unwrap_or(DEFAULT_SENSITIVE_MARKER).to_lowercase();
 
     let files = cdgc_search(client, config, clock, start, &jwt, &org, &json!({
         "from":0,"size":1,"query":{"bool":{"must":[
-            {"terms":{"elementType":["OBJECT"]}},{"terms":{"core.identity":[flat_file_id]}}]}}
+            {"terms":{"elementType":["OBJECT"]}},{"terms":{"core.identity":[schema_id]}}]}}
     })).await?;
-    let file = files.into_iter().next().ok_or_else(|| anyhow!("flat file '{flat_file_id}' not found"))?;
-    let location = s(&file, "core.location").ok_or_else(|| anyhow!("flat file has no core.location"))?;
+    let file = files.into_iter().next().ok_or_else(|| anyhow!("schema asset '{schema_id}' not found"))?;
+    let location = s(&file, "core.location").ok_or_else(|| anyhow!("schema asset has no core.location"))?;
 
     let cols = cdgc_search(client, config, clock, start, &jwt, &org, &json!({
         "from":0,"size":1000,"query":{"bool":{
@@ -226,7 +226,10 @@ async fn fetch_summary(client: &HttpClient, config: &Config, clock: &Clock, flat
     if let Some(e) = s(&file, "core.externalId") {
         fields.insert("x-dp-external-id".to_string(), e);
     }
-    fields.insert("x-dp-source".to_string(), config.catalog_id.clone());
+    // Source = the asset's catalog/scan origin (CDGC core.origin), derived from the asset itself.
+    if let Some(origin) = s(&file, "core.origin") {
+        fields.insert("x-dp-source".to_string(), origin);
+    }
     fields.insert("x-dp-field-count".to_string(), col_names.len().to_string());
     if !col_names.is_empty() {
         fields.insert("x-dp-fields".to_string(), col_names.join(","));
@@ -293,9 +296,9 @@ async fn try_acquire_refresh_lock<S: DataStorage>(store: &S, key: &str, now: i64
 }
 
 async fn get_summary<S: DataStorage>(
-    client: &HttpClient, config: &Config, clock: &Clock, meta_store: &S, lock_store: &S, flat_file_id: &str,
+    client: &HttpClient, config: &Config, clock: &Clock, meta_store: &S, lock_store: &S, schema_id: &str,
 ) -> Option<BTreeMap<String, String>> {
-    let key = format!("{META_CACHE_KEY_PREFIX}{flat_file_id}");
+    let key = format!("{META_CACHE_KEY_PREFIX}{schema_id}");
     let ttl = config.refresh_interval_seconds.unwrap_or(DEFAULT_REFRESH_INTERVAL_SECONDS).max(0);
     let now = now_secs(clock);
     let cached = read_cached(meta_store, &key).await;
@@ -304,17 +307,17 @@ async fn get_summary<S: DataStorage>(
             return Some(c.fields.clone());
         }
     }
-    let lock_key = format!("{REFRESH_LOCK_KEY_PREFIX}{flat_file_id}");
+    let lock_key = format!("{REFRESH_LOCK_KEY_PREFIX}{schema_id}");
     if !try_acquire_refresh_lock(lock_store, &lock_key, now).await.unwrap_or(true) {
         return cached.map(|c| c.fields);
     }
-    match fetch_summary(client, config, clock, flat_file_id).await {
+    match fetch_summary(client, config, clock, schema_id).await {
         Ok(fields) => {
             write_cached(meta_store, &key, &CachedMeta { fields: fields.clone(), timestamp: now }).await;
             Some(fields)
         }
         Err(e) => {
-            logger::warn!("cmi: metadata refresh failed for '{flat_file_id}': {e}");
+            logger::warn!("cmi: metadata refresh failed for '{schema_id}': {e}");
             if config.fail_open_on_cdgc_error.unwrap_or(true) { cached.map(|c| c.fields) } else { None }
         }
     }
@@ -330,9 +333,9 @@ async fn request_filter<S: DataStorage>(
     lock_store: Rc<S>,
 ) -> Flow<Option<Ctx>> {
     let hs = request_state.into_headers_state().await;
-    let header_name = config.flat_file_id_header.as_deref().unwrap_or("x-dp-flatfile-id");
-    let flat_file_id = hs.handler().header(header_name).filter(|v| !v.trim().is_empty())
-        .unwrap_or_else(|| config.flat_file_id.clone());
+    let header_name = config.schema_id_header.as_deref().unwrap_or("x-dp-schema-id");
+    let schema_id = hs.handler().header(header_name).filter(|v| !v.trim().is_empty())
+        .unwrap_or_else(|| config.schema_id.clone());
 
     let ct = hs.handler().header("content-type").unwrap_or_default();
     if ct.starts_with("application/json") && hs.method().as_str() == "POST" {
@@ -345,7 +348,7 @@ async fn request_filter<S: DataStorage>(
             }
         }
     }
-    let fields = get_summary(&client, &config, &clock, &*meta_store, &*lock_store, &flat_file_id)
+    let fields = get_summary(&client, &config, &clock, &*meta_store, &*lock_store, &schema_id)
         .await
         .unwrap_or_default();
     Flow::Continue(Some(Ctx { fields }))

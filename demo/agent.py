@@ -2,7 +2,7 @@
 """
 Agent simulation for the catalog-driven Contract Metadata Injection demo.
 
-The policy is configured with only a CDGC catalog-source id + flat-file id. It
+The policy is configured with only a CDGC schema-asset id. It
 derives the data product's governed identity from Informatica CDGC (the scanned
 dim_product.csv: name, columns, and the required/sensitive flags from the columns'
 linked Business Terms) and stamps it onto the response as x-dp-* headers.
@@ -43,7 +43,7 @@ def main():
     if status == "ok":
         print("✅ The response is self-describing: name, column set, required (isCDE) and")
         print("   sensitive (term marked Confidential) fields — all from Informatica CDGC,")
-        print("   from a config of just a catalog-source id + flat-file id.")
+        print("   from a config of just a schema-asset id.")
     else:
         print("⚠️  Metadata unavailable — check CDGC creds/ids/egress (fail-open: data still flowed).")
 

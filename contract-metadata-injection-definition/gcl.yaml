@@ -7,8 +7,8 @@ metadata:
     category: Transformation
     description: >-
       Derives a data product's governed identity from Informatica CDGC (a scanned
-      flat file + its columns and Business Terms) and stamps it onto responses as
-      x-dp-* headers. Enrichment, headers-only, fail-open.
+      asset — schema, flat file, table, etc. — + its columns and Business Terms)
+      and stamps it onto responses as x-dp-* headers. Enrichment, headers-only, fail-open.
     metadata/capabilities/injectionPoint: inbound
     metadata/capabilities/assetTypes: mcp,a2a,a2a_v1
     metadata/interfaceScope: api,resource
@@ -33,18 +33,16 @@ spec:
       type: string
       description: IDMC service-account password.
       "@context": { "@characteristics": [security:sensitive] }
-    catalogId:
-      type: string
-      description: CDGC catalog-source id the flat file belongs to.
-    flatFileId:
+    schemaId:
       type: string
       description: >-
-        Scanned flat-file/table asset id. The policy derives its identity + column
-        summary (names, required, sensitive) from CDGC — no per-field config.
-    flatFileIdHeader:
+        CDGC asset id of the scanned schema — a flat file, table, etc. The policy
+        derives its identity + column summary (names, required, sensitive) from
+        CDGC — no per-field config.
+    schemaIdHeader:
       type: string
-      default: x-dp-flatfile-id
-      description: Optional request header overriding flatFileId per request.
+      default: x-dp-schema-id
+      description: Optional request header overriding schemaId per request.
     sensitiveMarker:
       type: string
       default: confidential
@@ -75,5 +73,4 @@ spec:
     - cdgcSearchUrl
     - cdgcOrgUsername
     - cdgcOrgPassword
-    - catalogId
-    - flatFileId
+    - schemaId

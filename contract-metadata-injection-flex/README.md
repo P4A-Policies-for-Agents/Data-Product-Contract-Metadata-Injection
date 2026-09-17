@@ -63,7 +63,7 @@ Since the publish goal is intended to publish a policy asset in development, the
 *NOTE:* For this goal to succeed, the version of your policy definition in the Cargo.toml must be a dev version. Eg:
 ```
 [package.metadata.anypoint]
-group_id = "030e0aac-30d9-460f-9234-428c16a123c4"
+group_id = "<your-org-group-id>"
 definition_asset_id = { name = "contract-metadata-injection", version = "1.0.0-DEV" }
 ```
 
@@ -75,7 +75,7 @@ The `make release` goal also publishes the policy to Anypoint Exchange, but as a
 *NOTE:* For this goal to succeed, the version of your policy definition in the Cargo.toml must be a release version. Eg:
 ```
 [package.metadata.anypoint]
-group_id = "030e0aac-30d9-460f-9234-428c16a123c4"
+group_id = "<your-org-group-id>"
 definition_asset_id = { name = "contract-metadata-injection", version = "1.0.0" }
 ```
 

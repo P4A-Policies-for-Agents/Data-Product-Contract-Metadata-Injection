@@ -10,7 +10,7 @@ metadata:
       asset — schema, flat file, table, etc. — + its columns and Business Terms)
       and stamps it onto responses as x-dp-* headers. Enrichment, headers-only, fail-open.
     metadata/capabilities/injectionPoint: inbound
-    metadata/capabilities/assetTypes: mcp,a2a,a2a_v1
+    metadata/capabilities/assetTypes: mcp,rest,http
     metadata/interfaceScope: api,resource
 spec:
   extends:

@@ -7,8 +7,10 @@ the product's governed identity from Informatica CDGC and stamps it onto every r
 `x-dp-*` headers. No per-field configuration — the field set, required flags and
 sensitivity are read from the catalog at runtime.
 
-Built with the PDK, Rust → `wasm32-wasip1`, split-model. Works across **MCP**,
-**A2A**, and **REST/HTTP**.
+Built with the PDK, Rust → `wasm32-wasip1`, split-model. Applies to **MCP** and
+**REST/HTTP APIs** (`assetTypes: mcp,rest,http`) — both bind to a data-product
+schema. (A2A was dropped: agents aren't bound to a schema.) This policy is
+headers-only, so it is transport-agnostic across both.
 
 > Enrichment only — it adds headers and **fails open** (a CDGC outage degrades to
 > `x-dp-metadata-status: unavailable`; it never blocks the response). For

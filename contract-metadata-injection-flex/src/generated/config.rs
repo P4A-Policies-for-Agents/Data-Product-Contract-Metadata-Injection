@@ -30,7 +30,7 @@ pub struct Config {
     #[serde(alias = "schemaIdHeader")]
     pub schema_id_header: Option<String>,
     #[serde(alias = "sensitiveLevels")]
-    pub sensitive_levels: Option<String>,
+    pub sensitive_levels: Option<Vec<String>>,
     #[serde(alias = "sensitiveMarker")]
     pub sensitive_marker: Option<String>,
     #[serde(alias = "timeout")]

@@ -54,7 +54,7 @@ x-dp-metadata-source: cdgc          x-dp-metadata-status: ok
 | `schemaId` | string | required | CDGC asset id of the scanned schema (flat file, table, etc.) whose columns are summarized. |
 | `schemaIdHeader` | string | `x-dp-schema-id` | Per-request schema-asset id override. |
 | `schemaIdClaim` | string | _unset_ | Optional JWT claim name to read `schemaId` from; when set + present it wins over `schemaIdHeader`, binding the caller to a data product via the signed token. Needs an upstream JWT Validation policy. |
-| `sensitiveLevels` | string | `confidential,restricted` | Comma-separated Business Term "Security Level" (`securityClassification`) values that mark a field sensitive. Primary sensitivity signal. |
+| `sensitiveLevels` | array (multi-select) | `[confidential, restricted]` | Business Term "Security Level" (`securityClassification`) values that mark a field sensitive (`public` / `internal` / `confidential` / `restricted`). Primary sensitivity signal. |
 | `sensitiveMarker` | string | `confidential` | Fallback only (term has no Security Level): case-insensitive substring in the term description that marks it sensitive. |
 | `headerOnMiss` | boolean | `true` | Stamp `x-dp-metadata-status: unavailable` when CDGC can't be resolved. |
 | `refreshIntervalSeconds` | integer | `86400` | Metadata cache TTL. |
@@ -72,13 +72,15 @@ cd ../contract-metadata-injection-flex
 make build-asset-files && cargo build --target wasm32-wasip1 --release
 make release
 ```
-Published at **1.1.0** (catalog-driven; `x-dp-source` from the asset's
+Published at **1.2.0** (catalog-driven; `x-dp-source` from the asset's
 `core.origin`; **sensitivity from the Business Term Security Level
 `securityClassification`, with the description `sensitiveMarker` as fallback** —
-matching the Conformance Guard and Entitlement Filter; **1.1.0 adds opt-in
-`schemaIdClaim`** to read the schema id from a validated JWT claim, header mode
-stays the default). Requires **PDK 1.10** with `enable_stop_iteration`
-(request-leg CDGC fetch).
+matching the Conformance Guard and Entitlement Filter; 1.1.0 adds opt-in
+`schemaIdClaim` to read the schema id from a validated JWT claim, header mode
+stays the default; **1.2.0 turns `sensitiveLevels` into a multi-select dropdown** —
+`type: array` of `[public, internal, confidential, restricted]` in API Manager,
+instead of a comma-separated string). Requires **PDK 1.10** with
+`enable_stop_iteration` (request-leg CDGC fetch).
 
 > **Sourcing the schema id from a JWT:** set `schemaIdClaim` to read `schemaId`
 > from the caller's Bearer token instead of the `x-dp-schema-id` header — the

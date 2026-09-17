@@ -158,8 +158,10 @@ async fn fetch_summary(client: &HttpClient, config: &Config, clock: &Clock, sche
     let start = clock.now();
     let (jwt, org) = cdgc_auth(client, config, clock, start).await?;
     let sens_marker = config.sensitive_marker.as_deref().unwrap_or(DEFAULT_SENSITIVE_MARKER).to_lowercase();
-    let sens_levels: Vec<String> = config.sensitive_levels.as_deref().unwrap_or(DEFAULT_SENSITIVE_LEVELS)
-        .split(',').map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).collect();
+    let sens_levels: Vec<String> = match config.sensitive_levels.as_deref() {
+        Some(v) => v.iter().map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).collect(),
+        None => DEFAULT_SENSITIVE_LEVELS.split(',').map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).collect(),
+    };
 
     let files = cdgc_search(client, config, clock, start, &jwt, &org, &json!({
         "from":0,"size":1,"query":{"bool":{"must":[

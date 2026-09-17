@@ -4,7 +4,7 @@
   "cdgcOrgUsername": "REPLACE_ME_SERVICE_ACCOUNT",
   "cdgcOrgPassword": "REPLACE_ME_SECRET",
   "schemaId": "REPLACE_ME_SCHEMA_ASSET_ID",
-  "sensitiveLevels": "confidential,restricted",
+  "sensitiveLevels": ["confidential", "restricted"],
   "sensitiveMarker": "confidential",
   "refreshIntervalSeconds": 86400,
   "failOpenOnCdgcError": true,
